@@ -1,0 +1,391 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  password    String
+  name        String?
+  role        String     @default("EDITOR")
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  passwordResetTokens PasswordResetToken[]
+  sentInvitations     Invitation[]         @relation("InvitedBy")
+  auditLogs           AuditLog[]
+
+  @@index([workspaceId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  email       String
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role        String    @default("EDITOR")
+  token       String    @unique @default(cuid())
+  invitedById String
+  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  accepted    Boolean   @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, email])
+  @@index([token])
+  @@index([workspaceId])
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  workspaceId          String    @unique
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  plan                 String    @default("FREE") // FREE, STARTER, PRO, ENTERPRISE
+  status               String    @default("active") // active, canceled, past_due, trialing
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity      String   // product, order, user, etc.
+  entityId    String?
+  metadata    String?  // JSON string with before/after data
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt(sort: Desc)])
+}
+
+model Workspace {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  domain      String?
+  description String?
+  logo        String?
+  active      Boolean    @default(true)
+  apiKey      String     @unique @default(cuid())
+  plan        String     @default("FREE")
+  users       User[]
+  products    Product[]
+  pages       Page[]
+  posts       Post[]
+  orders      Order[]
+  bookings    Booking[]
+  media       Media[]
+  banners     Banner[]
+  coupons     Coupon[]
+  giftCards   GiftCard[]
+  invitations Invitation[]
+  subscription Subscription?
+  seo           SeoConfig?
+  theme         Theme?
+  settings      Settings?
+  notifications Notification[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name         String
+  slug         String
+  description  String?
+  price        Float
+  comparePrice Float?
+  images       String           @default("[]")
+  stock        Int              @default(0)
+  sku          String?
+  status       String           @default("DRAFT")
+  category     String?
+  tags         String           @default("[]")
+  featured     Boolean          @default(false)
+  variants     ProductVariant[]
+  orderItems   OrderItem[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([status])
+  @@index([category])
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String      // e.g. "Size / Color"
+  options    String      @default("[]") // JSON: [{name: "Size", value: "M"}, ...]
+  price      Float?      // overrides product price if set
+  stock      Int         @default(0)
+  sku        String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([productId])
+}
+
+model Page {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String
+  content     String    @default("{}")
+  status      String    @default("DRAFT")
+  seoTitle    String?
+  seoDesc     String?
+  seoImage    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String
+  excerpt     String?
+  content     String
+  coverImage  String?
+  author      String?
+  category    String?
+  tags        String    @default("[]")
+  status      String    @default("DRAFT")
+  publishedAt DateTime?
+  seoTitle    String?
+  seoDesc     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+}
+
+model Banner {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  subtitle    String?
+  image       String?
+  link        String?
+  buttonText  String?
+  active      Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  orderNumber    String      @unique
+  customerName   String
+  customerEmail  String
+  customerPhone  String?
+  items          OrderItem[]
+  subtotal       Float
+  discount       Float       @default(0)
+  total          Float
+  couponCode     String?
+  status         String      @default("PENDING")
+  shippingStatus String      @default("UNFULFILLED")
+  trackingNumber String?
+  trackingUrl    String?
+  notes          String?
+  address        String?     // JSON: {line1, line2, city, state, zip, country}
+  paymentMethod  String?
+  paymentStatus  String      @default("UNPAID")
+  stripePaymentIntentId String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([customerEmail])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name        String
+  price       Float
+  quantity    Int
+  variantInfo String?  // JSON snapshot of variant at time of order
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Coupon {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  code         String
+  discountType String    @default("PERCENTAGE") // PERCENTAGE or FIXED
+  amount       Float
+  minSpend     Float?
+  usageLimit   Int?
+  usageCount   Int       @default(0)
+  expiryDate   DateTime?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([workspaceId, code])
+  @@index([workspaceId])
+}
+
+model GiftCard {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  code         String
+  initialValue Float
+  balance      Float
+  expiryDate   DateTime?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([workspaceId, code])
+  @@index([workspaceId])
+}
+
+model Booking {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  email       String
+  phone       String?
+  service     String?
+  date        DateTime
+  timeSlot    String?
+  status      String    @default("pending")
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
+
+model Media {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  url         String
+  type        String
+  size        Int
+  alt         String?
+  folder      String?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model SeoConfig {
+  id                String    @id @default(cuid())
+  workspaceId       String    @unique
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  metaTitle         String?
+  metaDesc          String?
+  ogImage           String?
+  googleAnalyticsId String?
+  robots            String?
+  sitemap           Boolean   @default(true)
+  updatedAt         DateTime  @updatedAt
+}
+
+model Theme {
+  id             String    @id @default(cuid())
+  workspaceId    String    @unique
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  primaryColor   String    @default("#18181b")
+  secondaryColor String    @default("#ffffff")
+  accentColor    String    @default("#3b82f6")
+  fontHeading    String    @default("Inter")
+  fontBody       String    @default("Inter")
+  logo           String?
+  favicon        String?
+  updatedAt      DateTime  @updatedAt
+}
+
+model Settings {
+  id           String    @id @default(cuid())
+  workspaceId  String    @unique
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  siteName     String
+  siteUrl      String?
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  socialLinks  String?
+  currency     String    @default("USD")
+  timezone     String    @default("UTC")
+  updatedAt    DateTime  @updatedAt
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  body        String
+  type        String    @default("info")
+  link        String?
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([read])
+}
