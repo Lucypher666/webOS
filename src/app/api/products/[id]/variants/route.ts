@@ -19,26 +19,28 @@ async function getProductAndCheck(productId: string, session: any) {
   return product
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const product = await getProductAndCheck(params.id, session)
+  const { id } = await params
+  const product = await getProductAndCheck(id, session)
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const variants = await prisma.productVariant.findMany({
-    where: { productId: params.id },
+    where: { productId: id },
     orderBy: { createdAt: "asc" },
   })
 
   return NextResponse.json(variants.map(v => ({ ...v, options: JSON.parse(v.options) })))
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const product = await getProductAndCheck(params.id, session)
+  const { id } = await params
+  const product = await getProductAndCheck(id, session)
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const body = await req.json()
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { options, ...rest } = parsed.data
   const variant = await prisma.productVariant.create({
     data: {
-      productId: params.id,
+      productId: id,
       options: JSON.stringify(options),
       price: rest.price ?? null,
       sku: rest.sku ?? null,
@@ -59,23 +61,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({ ...variant, options }, { status: 201 })
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const product = await getProductAndCheck(params.id, session)
+  const { id } = await params
+  const product = await getProductAndCheck(id, session)
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  // Replace all variants at once (common UX pattern)
   const body = await req.json()
   const parsed = z.array(variantSchema).safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
 
-  await prisma.productVariant.deleteMany({ where: { productId: params.id } })
+  await prisma.productVariant.deleteMany({ where: { productId: id } })
 
   const created = await prisma.productVariant.createMany({
     data: parsed.data.map(v => ({
-      productId: params.id,
+      productId: id,
       name: v.name,
       options: JSON.stringify(v.options),
       price: v.price ?? null,

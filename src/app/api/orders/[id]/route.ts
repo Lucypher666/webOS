@@ -24,21 +24,23 @@ async function getOrderAndCheck(id: string, session: any) {
   return order
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const order = await getOrderAndCheck(params.id, session)
+  const { id } = await params
+  const order = await getOrderAndCheck(id, session)
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   return NextResponse.json(order)
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const order = await getOrderAndCheck(params.id, session)
+  const { id } = await params
+  const order = await getOrderAndCheck(id, session)
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   try {
@@ -49,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const updated = await prisma.order.update({
-      where: { id: params.id },
+      where: { id },
       data: parsed.data,
       include: { items: true },
     })
@@ -70,18 +72,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const order = await getOrderAndCheck(params.id, session)
+  const { id } = await params
+  const order = await getOrderAndCheck(id, session)
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   if (!["CANCELLED", "REFUNDED"].includes(order.status)) {
     return NextResponse.json({ error: "Only cancelled or refunded orders can be deleted." }, { status: 400 })
   }
 
-  await prisma.order.delete({ where: { id: params.id } })
+  await prisma.order.delete({ where: { id } })
 
   await logAudit({
     workspaceId: order.workspaceId,
