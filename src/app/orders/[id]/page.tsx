@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { Package, Truck, User, MapPin, CreditCard, ExternalLink } from "lucide-react"
 
-export default async function OrderDetailPage({ params }: { params: { id: string } }) {
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await getServerSession(authOptions)
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN"
   const workspaceId = session?.user?.workspaceId
 
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       workspace: { select: { name: true } },
       items: { include: { product: { select: { name: true, images: true } } } },
