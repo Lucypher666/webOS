@@ -1,4 +1,4 @@
-/**
+﻿/**
  * POST /api/public/orders
  * Public endpoint — storefront uses this to place orders.
  * Requires ?workspace=slug query param.
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone ?? null,
-        shippingAddress: data.shippingAddress,
+        address: data.shippingAddress ?? null,
         subtotal,
         discount,
         total,
@@ -121,11 +121,10 @@ export async function POST(req: NextRequest) {
         items: {
           create: data.items.map(i => ({
             productId: i.productId,
-            variantId: i.variantId ?? null,
             name: i.name,
             price: i.price,
             quantity: i.quantity,
-            total: i.price * i.quantity,
+            variantInfo: i.variantId ? JSON.stringify({ variantId: i.variantId }) : null,
           })),
         },
       },
