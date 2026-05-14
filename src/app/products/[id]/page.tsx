@@ -70,17 +70,24 @@ export default function EditProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    const patchBody: any = {
+      name: form.name,
+      description: form.description || undefined,
+      price: parseFloat(form.price),
+      stock: parseInt(form.stock) || 0,
+      sku: form.sku || undefined,
+      category: form.category || undefined,
+      status: form.status,
+      featured: form.featured,
+      tags: form.tags.split(",").map((t: string) => t.trim()).filter(Boolean),
+      images,
+    }
+    if (form.comparePrice) patchBody.comparePrice = parseFloat(form.comparePrice)
+
     await fetch(`/api/products/${params.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        price: parseFloat(form.price),
-        comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : null,
-        stock: parseInt(form.stock),
-        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-        images: JSON.stringify(images),
-      }),
+      body: JSON.stringify(patchBody),
     })
 
     // Save variants

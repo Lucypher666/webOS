@@ -13,7 +13,7 @@ const patchSchema = z.object({
   stock: z.number().int().min(0).default(0),
   sku: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
-  status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]),
+  status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional().default("DRAFT"),
   featured: z.boolean().default(false),
   tags: z.array(z.string()).default([]),
   images: z.array(z.string()).default([]),

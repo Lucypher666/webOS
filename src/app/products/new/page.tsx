@@ -14,6 +14,7 @@ import { Plus, X, Image as ImageIcon } from "lucide-react"
 export default function NewProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
   const [images, setImages] = useState<string[]>([])
   const [form, setForm] = useState({
@@ -25,21 +26,34 @@ export default function NewProductPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError("")
     setLoading(true)
+    const body: any = {
+      name: form.name,
+      description: form.description || undefined,
+      price: parseFloat(form.price),
+      stock: parseInt(form.stock) || 0,
+      sku: form.sku || undefined,
+      category: form.category || undefined,
+      status: form.status,
+      featured: form.featured,
+      tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      images,
+    }
+    if (form.comparePrice) body.comparePrice = parseFloat(form.comparePrice)
+
     const res = await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        price: parseFloat(form.price),
-        comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : null,
-        stock: parseInt(form.stock),
-        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-        images,
-      }),
+      body: JSON.stringify(body),
     })
     setLoading(false)
-    if (res.ok) router.push("/products")
+    if (res.ok) {
+      router.push("/products")
+    } else {
+      const data = await res.json()
+      setError(data.error ?? "Failed to save product. Please try again.")
+    }
   }
 
   const removeImage = (url: string) => {
@@ -168,6 +182,11 @@ export default function NewProductPage() {
             </label>
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
           <div className="flex flex-col gap-3 pt-2">
             <Button type="submit" size="lg" disabled={loading}>{loading ? "Saving…" : "Save Product"}</Button>
             <Button type="button" variant="outline" size="lg" onClick={() => router.back()}>Cancel</Button>
