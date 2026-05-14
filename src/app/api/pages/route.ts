@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { slugify } from "@/lib/utils"
+import { revalidateStorefront } from "@/lib/revalidate"
 
 function parsePage(p: any) {
   return { ...p, content: typeof p.content === "string" ? JSON.parse(p.content) : p.content }
@@ -36,5 +37,6 @@ export async function POST(req: NextRequest) {
       seoDesc: body.seoDesc || null,
     },
   })
+  revalidateStorefront({ tags: ["pages"], paths: ["/"] })
   return NextResponse.json(parsePage(page), { status: 201 })
 }

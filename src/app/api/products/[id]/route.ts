@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { logAudit } from "@/lib/audit"
+import { revalidateStorefront } from "@/lib/revalidate"
 
 const patchSchema = z.object({
   name: z.string().min(1).max(500),
@@ -56,6 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     data: { ...rest, tags: JSON.stringify(tags), images: JSON.stringify(images) },
   })
+  revalidateStorefront({ tags: ["products", `product-${product.slug}`], paths: ["/products", `/products/${product.slug}`, "/"] })
   return NextResponse.json(parseProduct(product))
 }
 
@@ -66,6 +68,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   const existing = await getProduct(id, session)
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
   await prisma.product.delete({ where: { id } })
+  revalidateStorefront({ tags: ["products"], paths: ["/products", "/"] })
   await logAudit({
     workspaceId: existing.workspaceId,
     userId: session.user.id,

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { slugify } from "@/lib/utils"
+import { revalidateStorefront } from "@/lib/revalidate"
 
 function parsePost(p: any) {
   return { ...p, tags: JSON.parse(p.tags ?? "[]") }
@@ -39,5 +40,6 @@ export async function POST(req: NextRequest) {
       publishedAt: body.status === "PUBLISHED" ? new Date() : null,
     },
   })
+  revalidateStorefront({ tags: ["posts"], paths: ["/blog"] })
   return NextResponse.json(parsePost(post), { status: 201 })
 }

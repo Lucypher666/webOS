@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { slugify } from "@/lib/utils"
 import { z } from "zod"
 import { logAudit } from "@/lib/audit"
+import { revalidateStorefront } from "@/lib/revalidate"
 
 const createSchema = z.object({
   name: z.string().min(1).max(255),
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
       metadata: { name },
     })
 
+    revalidateStorefront({ tags: ["products"], paths: ["/products", "/"] })
     return NextResponse.json(parseProduct(product), { status: 201 })
   } catch (err) {
     console.error("[PRODUCTS POST]", err)

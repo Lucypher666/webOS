@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { revalidateStorefront } from "@/lib/revalidate"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -21,5 +22,6 @@ export async function POST(req: NextRequest) {
     update: body,
     create: { workspaceId: session.user.workspaceId, ...body },
   })
+  revalidateStorefront({ tags: ["theme"], paths: ["/"] })
   return NextResponse.json(theme)
 }
