@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Package, FileText, BookOpen, Image, Megaphone,
   ShoppingCart, Calendar, Search, Palette, Settings, Building2,
   LogOut, Layers, ChevronRight, Users, Shield, UserPlus, CreditCard,
-  Menu, X,
+  Menu, X, Code2,
 } from "lucide-react"
 import { NotificationBell } from "@/components/notification-bell"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,7 @@ const navItems = [
   { label: "Media", href: "/media", icon: Image },
   { label: "SEO", href: "/seo", icon: Search },
   { label: "Theme", href: "/theme", icon: Palette },
+  { label: "API Access", href: "/api-access", icon: Code2 },
 ]
 
 const workspaceOwnerItems = [

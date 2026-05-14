@@ -20,5 +20,6 @@ export const config = {
     "/coupons/:path*",
     "/gift-cards/:path*",
     "/customers/:path*",
+    "/api-access/:path*",
   ],
 }
