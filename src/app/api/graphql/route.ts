@@ -26,6 +26,12 @@ const { handleRequest } = createYoga({
 
         # Settings
         settings: Settings
+
+        # Theme
+        theme: Theme
+
+        # SEO
+        seoConfig: SeoConfig
       }
 
       # ── Workspace ───────────────────────────────────────────
@@ -135,6 +141,27 @@ const { handleRequest } = createYoga({
         linkedin: String
         youtube: String
       }
+
+      # ── Theme ────────────────────────────────────────────────
+      type Theme {
+        primaryColor: String!
+        secondaryColor: String!
+        accentColor: String!
+        fontHeading: String!
+        fontBody: String!
+        logo: String
+        favicon: String
+      }
+
+      # ── SEO ──────────────────────────────────────────────────
+      type SeoConfig {
+        metaTitle: String
+        metaDesc: String
+        ogImage: String
+        googleAnalyticsId: String
+        robots: String
+        sitemap: Boolean
+      }
     `,
     resolvers: {
       Query: {
@@ -225,6 +252,14 @@ const { handleRequest } = createYoga({
           let social: any = {}
           try { social = JSON.parse(s.socialLinks as string ?? '{}') } catch {}
           return { ...s, socialLinks: social }
+        },
+
+        theme: async (_, __, ctx: any) => {
+          return prisma.theme.findUnique({ where: { workspaceId: ctx.workspaceId } })
+        },
+
+        seoConfig: async (_, __, ctx: any) => {
+          return prisma.seoConfig.findUnique({ where: { workspaceId: ctx.workspaceId } })
         },
       },
 
