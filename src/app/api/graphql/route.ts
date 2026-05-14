@@ -280,5 +280,15 @@ const { handleRequest } = createYoga({
   fetchAPI: { Response },
 })
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: corsHeaders })
+}
+
 export const GET = (request: Request) => handleRequest(request, {})
 export const POST = (request: Request) => handleRequest(request, {})
