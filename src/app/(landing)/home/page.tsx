@@ -199,14 +199,14 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-800 py-8">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between text-sm text-zinc-600">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-600">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
               <Layers className="w-3 h-3 text-white" />
             </div>
             <span>WebOS</span>
           </div>
-          <p>© {new Date().getFullYear()} WebOS. Built by <a href="https://evokira.in" target="_blank" rel="noopener noreferrer" className="text-zinc-400 font-medium hover:text-white transition-colors">Evokira</a>. All rights reserved.</p>
+          <p className="text-center">© {new Date().getFullYear()} WebOS. Built by <a href="https://evokira.in" target="_blank" rel="noopener noreferrer" className="text-zinc-400 font-medium hover:text-white transition-colors">Evokira</a>. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <Link href="/login" className="hover:text-zinc-400 transition-colors">Sign in</Link>
             <Link href="/register" className="hover:text-zinc-400 transition-colors">Register</Link>
