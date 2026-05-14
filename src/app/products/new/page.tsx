@@ -35,7 +35,7 @@ export default function NewProductPage() {
         comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : null,
         stock: parseInt(form.stock),
         tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-        images: JSON.stringify(images),
+        images,
       }),
     })
     setLoading(false)

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
+import { v2 as cloudinary } from "cloudinary"
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
@@ -11,11 +10,17 @@ const ALLOWED_TYPES = new Set([
 ])
 const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 
-function sanitizeFilename(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9._-]/g, "-")
-    .replace(/\.{2,}/g, ".") // prevent path traversal
-    .slice(0, 100)
+const cloudinaryConfigured =
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+
+if (cloudinaryConfigured) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  })
 }
 
 export async function GET(req: NextRequest) {
@@ -47,46 +52,58 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (!session.user.workspaceId) return NextResponse.json({ error: "No workspace" }, { status: 400 })
 
+  if (!cloudinaryConfigured) {
+    return NextResponse.json(
+      { error: "Media uploads require Cloudinary. Please add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET to your environment variables." },
+      { status: 503 }
+    )
+  }
+
   const formData = await req.formData()
   const files = formData.getAll("files") as File[]
 
   if (files.length === 0) return NextResponse.json({ error: "No files provided" }, { status: 400 })
   if (files.length > 20) return NextResponse.json({ error: "Maximum 20 files per upload" }, { status: 400 })
 
-  // Validate all files before writing any
   for (const file of files) {
     if (!ALLOWED_TYPES.has(file.type)) {
-      return NextResponse.json({
-        error: `File type "${file.type}" is not allowed. Allowed: images, PDFs, videos.`,
-      }, { status: 400 })
+      return NextResponse.json({ error: `File type "${file.type}" is not allowed.` }, { status: 400 })
     }
     if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json({
-        error: `File "${file.name}" exceeds the 10 MB size limit.`,
-      }, { status: 400 })
+      return NextResponse.json({ error: `File "${file.name}" exceeds the 10 MB size limit.` }, { status: 400 })
     }
     if (file.size === 0) {
       return NextResponse.json({ error: `File "${file.name}" is empty.` }, { status: 400 })
     }
   }
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads", session.user.workspaceId)
-  await mkdir(uploadDir, { recursive: true })
-
   const created = await Promise.all(
-    files.map(async file => {
+    files.map(async (file) => {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
-      const safeName = sanitizeFilename(file.name)
-      const filename = `${Date.now()}-${safeName}`
-      const filepath = path.join(uploadDir, filename)
-      await writeFile(filepath, buffer)
-      const url = `/uploads/${session.user.workspaceId}/${filename}`
+
+      // Upload to Cloudinary
+      const result = await new Promise<any>((resolve, reject) => {
+        const resourceType = file.type.startsWith("video/") ? "video" : file.type === "application/pdf" ? "raw" : "image"
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: `webos/${session.user.workspaceId}`,
+            resource_type: resourceType,
+            public_id: `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`,
+          },
+          (error, result) => {
+            if (error) reject(error)
+            else resolve(result)
+          }
+        )
+        uploadStream.end(buffer)
+      })
+
       return prisma.media.create({
         data: {
           workspaceId: session.user.workspaceId!,
           name: file.name,
-          url,
+          url: result.secure_url,
           type: file.type,
           size: file.size,
         },
